@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}All Stations | RailPulse{% endblock %}
+{% block page_title %}All Stations{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+    <h1 class="text-2xl font-bold text-[#001D3C] mb-1">All Stations</h1>
+    <p class="text-sm text-slate-500 mb-5">Browse every station in the network. Use search to narrow it down.</p>
+
+    <form method="get" action="{{ request.url_for('stations_browse') }}" class="mb-4 flex gap-2">
+        <input type="text" name="q" value="{{ q }}" placeholder="Search by name or CRS code…"
+               class="flex-1 border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#001D3C]/20 focus:border-[#001D3C]">
+        <button type="submit" class="px-4 py-2.5 bg-[#001D3C] text-white text-sm font-medium rounded-lg">Search</button>
+    </form>
+
+    <div class="border border-slate-200 rounded-xl overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                    <th class="text-left px-4 py-2.5 font-medium text-slate-600">Station</th>
+                    <th class="text-left px-4 py-2.5 font-medium text-slate-600">CRS</th>
+                    <th class="text-left px-4 py-2.5 font-medium text-slate-600">Route</th>
+                    <th class="text-right px-4 py-2.5 font-medium text-slate-600"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in stations %}
+                <tr class="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                    <td class="px-4 py-2.5 text-slate-900">{{ s.full_name }}</td>
+                    <td class="px-4 py-2.5 text-slate-500">{{ s.crs_code }}</td>
+                    <td class="px-4 py-2.5 text-slate-500">{{ s.route_description or "Other" }}</td>
+                    <td class="px-4 py-2.5 text-right">
+                        <button type="button" data-loading
+                            onclick="selectStation('{{ s.full_name|e }}', '{{ s.crs_code|e }}', '{{ (s.route_description or "Other")|e }}')"
+                            class="relative px-3 py-1 text-xs font-medium text-white bg-[#001D3C] rounded-lg hover:bg-[#001D3C]/90">
+                            <span class="btn-label">Select</span>
+                            <span class="btn-spinner"><svg><use href="#icon-loader"/></svg></span>
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="px-4 py-6 text-center text-slate-400">No stations found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex items-center justify-between mt-4 text-sm text-slate-600">
+        <span>Page {{ page }} of {{ total_pages }}</span>
+        <div class="flex gap-2">
+            {% if page > 1 %}
+            <a href="?page={{ page - 1 }}&q={{ q }}" class="px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50">Prev</a>
+            {% endif %}
+            {% if page < total_pages %}
+            <a href="?page={{ page + 1 }}&q={{ q }}" class="px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50">Next</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script>
+function selectStation(name, crs, route) {
+  if (window.opener && !window.opener.closed) {
+    window.opener.postMessage({ type: 'station-selected', name, crs, route }, window.location.origin);
+    window.close();
+  } else {
+    const params = new URLSearchParams({ station: name, crs, route });
+    window.location.href = "{{ request.url_for('preferences') }}?" + params.toString();
+  }
+}
+</script>
+{% endblock %}

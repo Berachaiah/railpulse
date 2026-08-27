@@ -1,0 +1,7 @@
+venv/
+backup/
+__pycache__/
+*.pyc
+.env
+firebase-service-account.json
+railpulse.db

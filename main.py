@@ -18,6 +18,8 @@ from auth import (
     hash_password,
     verify_password,
 )
+from collections import defaultdict
+from sqlalchemy import text
 from database import Base, engine, get_db
 from models import User, UserPreference, Notification
 
@@ -402,6 +404,97 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 # Preferences
 # ---------------------------------------------------------------------------
+
+@app.get("/api/stations")
+async def get_stations(db: Session = Depends(get_db)):
+    result = db.execute(
+        text("""
+            SELECT stanox_no, full_name, crs_code, route_description
+            FROM station_codes
+            WHERE crs_code IS NOT NULL
+            ORDER BY route_description, full_name
+        """)
+    )
+    grouped = defaultdict(list)
+    for row in result:
+        route = row.route_description or "Other"
+        grouped[route].append({
+            "stanox_no": row.stanox_no,
+            "full_name": row.full_name,
+            "crs_code": row.crs_code,
+        })
+    return grouped
+
+@app.get("/api/stations/search")
+async def search_stations(q: str = "", db: Session = Depends(get_db)):
+    q = q.strip()
+    if len(q) < 2:
+        return []
+    result = db.execute(
+        text("""
+            SELECT stanox_no, full_name, crs_code, route_description
+            FROM station_codes
+            WHERE crs_code IS NOT NULL
+              AND (full_name LIKE :pattern OR crs_code LIKE :pattern)
+            ORDER BY full_name
+            LIMIT 20
+        """),
+        {"pattern": f"%{q}%"}
+    )
+    return [
+        {
+            "stanox_no": row.stanox_no,
+            "full_name": row.full_name,
+            "crs_code": row.crs_code,
+            "route_description": row.route_description or "Other",
+        }
+        for row in result
+    ]
+
+
+@app.get("/stations", name="stations_browse")
+async def stations_browse(request: Request, page: int = 1, q: str = "", db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return RedirectResponse(url=request.url_for("sign_in_page"), status_code=303)
+
+    per_page = 50
+    page = max(page, 1)
+    offset = (page - 1) * per_page
+
+    base_query = "FROM station_codes WHERE crs_code IS NOT NULL"
+    params = {}
+    if q.strip():
+        base_query += " AND (full_name LIKE :pattern OR crs_code LIKE :pattern)"
+        params["pattern"] = f"%{q.strip()}%"
+
+    total = db.execute(text(f"SELECT COUNT(*) {base_query}"), params).scalar()
+
+    params["limit"] = per_page
+    params["offset"] = offset
+    rows = db.execute(
+        text(f"""
+            SELECT stanox_no, full_name, crs_code, route_description
+            {base_query}
+            ORDER BY full_name
+            LIMIT :limit OFFSET :offset
+        """),
+        params
+    ).fetchall()
+
+    total_pages = max((total + per_page - 1) // per_page, 1)
+
+    return templates.TemplateResponse(
+        request,
+        "stations.html",
+        {
+            "current_user": current_user,
+            "stations": rows,
+            "page": page,
+            "total_pages": total_pages,
+            "q": q,
+        },
+    )
 
 @app.get("/preferences", name="preferences")
 async def preferences_page(request: Request, db: Session = Depends(get_db)):

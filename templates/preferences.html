@@ -104,20 +104,102 @@
                 </button>
             </div>
             <form method="post" action="/preferences" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Route</label>
-                    <select name="route" required autocomplete="off" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#001D3C]/20 focus:border-[#001D3C]">
-                        <option value="">Select a route</option>
-                        <option>East Coast Main Line</option>
-                        <option>Great Northern</option>
-                        <option>Thameslink</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1.5">Station</label>
-                    <input type="text" name="station" required autocomplete="off" placeholder="e.g. King's Cross"
+                <input type="hidden" id="route-hidden" name="route">
+                <div class="mb-4 relative">
+                    <label for="station-search" class="block text-sm font-medium text-slate-700 mb-1.5">Station</label>
+                    <input type="text" id="station-search" autocomplete="off" placeholder="Start typing a station name…" required
                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#001D3C]/20 focus:border-[#001D3C]">
+                    <input type="hidden" id="station-hidden" name="station">
+                    <div id="station-suggestions" class="hidden absolute z-10 w-full bg-white border border-slate-200 rounded-lg mt-1 max-h-64 overflow-y-auto shadow-lg"></div>
+                    <p class="text-xs text-slate-400 mt-1">Can't find your station? <a href="/stations" target="_blank" class="text-[#001D3C] underline">Browse all stations</a></p>
+                    <p id="station-error" class="hidden text-xs text-red-600 mt-1">Please select a station from the suggestions.</p>
                 </div>
+
+                <script>
+                  (function() {
+                    const searchInput = document.getElementById('station-search');
+                    const hiddenStation = document.getElementById('station-hidden');
+                    const hiddenRoute = document.getElementById('route-hidden');
+                    const suggestionsBox = document.getElementById('station-suggestions');
+                    const errorMsg = document.getElementById('station-error');
+                    let debounceTimer;
+                    let selectedValid = false;
+
+                    window.addEventListener('message', (e) => {
+                      if (e.origin !== window.location.origin) return;
+                      if (e.data && e.data.type === 'station-selected') {
+                        searchInput.value = e.data.name;
+                        hiddenStation.value = e.data.name;
+                        hiddenRoute.value = e.data.route;
+                        selectedValid = true;
+                      }
+                    });
+
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.get('station')) {
+                      searchInput.value = urlParams.get('station');
+                      hiddenStation.value = urlParams.get('station');
+                      hiddenRoute.value = urlParams.get('route') || '';
+                      selectedValid = true;
+                      document.getElementById('add-route-modal').classList.remove('hidden');
+                      window.history.replaceState({}, '', window.location.pathname);
+                    }
+
+                    searchInput.addEventListener('input', () => {
+                      selectedValid = false;
+                      hiddenStation.value = '';
+                      hiddenRoute.value = '';
+                      errorMsg.classList.add('hidden');
+                      clearTimeout(debounceTimer);
+                      const q = searchInput.value.trim();
+                      if (q.length < 2) {
+                        suggestionsBox.classList.add('hidden');
+                        suggestionsBox.innerHTML = '';
+                        return;
+                      }
+                      debounceTimer = setTimeout(async () => {
+                        try {
+                          const res = await fetch(`/api/stations/search?q=${encodeURIComponent(q)}`);
+                          const results = await res.json();
+                          suggestionsBox.innerHTML = '';
+                          if (results.length === 0) {
+                            suggestionsBox.classList.add('hidden');
+                            return;
+                          }
+                          for (const station of results) {
+                            const item = document.createElement('div');
+                            item.className = 'px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer';
+                            item.textContent = `${station.full_name} (${station.crs_code}) — ${station.route_description}`;
+                            item.addEventListener('click', () => {
+                              searchInput.value = station.full_name;
+                              hiddenStation.value = station.full_name;
+                              hiddenRoute.value = station.route_description;
+                              selectedValid = true;
+                              suggestionsBox.classList.add('hidden');
+                            });
+                            suggestionsBox.appendChild(item);
+                          }
+                          suggestionsBox.classList.remove('hidden');
+                        } catch (err) {
+                          console.error('Station search failed:', err);
+                        }
+                      }, 250);
+                    });
+
+                    document.addEventListener('click', (e) => {
+                      if (!suggestionsBox.contains(e.target) && e.target !== searchInput) {
+                        suggestionsBox.classList.add('hidden');
+                      }
+                    });
+
+                    searchInput.closest('form').addEventListener('submit', (e) => {
+                      if (!selectedValid) {
+                        e.preventDefault();
+                        errorMsg.classList.remove('hidden');
+                      }
+                    });
+                  })();
+                </script>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">How much delay can you tolerate?</label>
                     <p class="text-xs text-slate-500 mb-1.5">We'll alert you once your train is running this late.</p>

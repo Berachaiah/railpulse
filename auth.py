@@ -1,8 +1,10 @@
+import json
 import os
 import secrets
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import firebase_admin
+import jwt
 from fastapi import Request
 from firebase_admin import credentials
 from passlib.context import CryptContext
@@ -15,15 +17,16 @@ pwd_context = CryptContext(
     deprecated="auto",
 )
 
-_firebase_cred = credentials.Certificate(os.environ["FIREBASE_SERVICE_ACCOUNT_PATH"])
-firebase_admin.initialize_app(_firebase_cred)
+if not firebase_admin._apps:
+    _firebase_cred = credentials.Certificate(
+        json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT_JSON"])
+    )
+    firebase_admin.initialize_app(_firebase_cred)
 
 SESSION_COOKIE_NAME = "railpulse_session"
 SESSION_MAX_AGE = int(timedelta(days=30).total_seconds())
-
-# Dev-only in-memory session store.
-# Replace with Redis or a database-backed session store in production.
-_sessions: dict[str, str] = {}
+JWT_SECRET = os.environ["SESSION_SECRET_KEY"]
+JWT_ALGORITHM = "HS256"
 
 
 def hash_password(password: str) -> str:
@@ -35,9 +38,11 @@ def verify_password(password: str, hashed_password: str) -> bool:
 
 
 def create_session_token(user_id) -> str:
-    token = secrets.token_urlsafe(32)
-    _sessions[token] = str(user_id)
-    return token
+    payload = {
+        "sub": str(user_id),
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=SESSION_MAX_AGE),
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
 def get_current_user(request: Request, db: Session):
@@ -46,7 +51,12 @@ def get_current_user(request: Request, db: Session):
     if not token:
         return None
 
-    user_id = _sessions.get(token)
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except jwt.PyJWTError:
+        return None
+
+    user_id = payload.get("sub")
 
     if not user_id:
         return None
