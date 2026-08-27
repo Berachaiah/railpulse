@@ -1,10 +1,15 @@
+/* Page-wide ambient background now, not just the hero -- fixed so it
+   stays put behind all scrollable content. Sits above the static
+   railway-bg/body::before,::after motifs (those are z-index -2) but
+   below every real section (.section-texture and page content sit
+   at z-index 0+). */
 #hero-hyperspeed {
-  position: absolute;
+  position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  z-index: 0;
+  z-index: -1;
   pointer-events: none;
 }
 
@@ -12,26 +17,6 @@
   width: 100%;
   height: 100%;
   display: block;
-}
-
-/* fade the effect into the page background at top/bottom so it doesn't hard-cut */
-#hero-hyperspeed::before,
-#hero-hyperspeed::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 140px;
-  z-index: 1;
-  pointer-events: none;
-}
-#hero-hyperspeed::before {
-  top: 0;
-  background: linear-gradient(to bottom, #081321 0%, transparent 100%);
-}
-#hero-hyperspeed::after {
-  bottom: 0;
-  background: linear-gradient(to top, #081321 0%, transparent 100%);
 }
 
 /* hero content needs to sit above the canvas */

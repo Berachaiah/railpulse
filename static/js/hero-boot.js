@@ -16,6 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let app = null;
 
   try {
+    // Now an ambient page-wide background rather than the hero's focal
+    // centerpiece, and it runs for as long as someone stays on the page
+    // (not just while the hero is in view) -- toned down from the
+    // original hero-only settings so sustained rendering stays cheap.
     app = initHyperspeed(container, {
       distortion: 'turbulentDistortion',
       length: 400,
@@ -23,11 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
       islandWidth: 1.4,
       lanesPerRoad: 2,           // reads as twin rail tracks rather than a highway
       fov: 85,
-      baseSpeed: 0.12,
+      baseSpeed: 0.08,
       lowPower,
-      maxPixelRatio: lowPower ? 1 : window.devicePixelRatio,
-      lightPairsPerRoadWay: lowPower ? 16 : 34,
-      totalSideLightSticks: lowPower ? 12 : 26,
+      maxPixelRatio: lowPower ? 1 : Math.min(window.devicePixelRatio, 1.5),
+      lightPairsPerRoadWay: lowPower ? 10 : 20,
+      totalSideLightSticks: lowPower ? 8 : 16,
       carLightsLength: [10, 50],
       movingAwaySpeed: [16, 24],
       movingCloserSpeed: [-30, -48],
@@ -54,19 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     else app.resume();
   });
 
-  // Stop rendering once the hero has scrolled out of view; resume when it's back.
-  const heroSection = document.getElementById('home');
-  if (heroSection && 'IntersectionObserver' in window) {
-    const io = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (!app) return;
-          if (entry.isIntersecting) app.resume();
-          else app.pause();
-        });
-      },
-      { threshold: 0 }
-    );
-    io.observe(heroSection);
-  }
+  // No longer paused on scroll -- it's a page-wide ambient background now,
+  // so it should keep running as long as the tab itself is visible
+  // (handled by the visibilitychange listener above).
 });
