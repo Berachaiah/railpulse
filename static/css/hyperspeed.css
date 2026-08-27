@@ -1,0 +1,99 @@
+#hero-hyperspeed {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#hero-hyperspeed canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* fade the effect into the page background at top/bottom so it doesn't hard-cut */
+#hero-hyperspeed::before,
+#hero-hyperspeed::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 140px;
+  z-index: 1;
+  pointer-events: none;
+}
+#hero-hyperspeed::before {
+  top: 0;
+  background: linear-gradient(to bottom, #081321 0%, transparent 100%);
+}
+#hero-hyperspeed::after {
+  bottom: 0;
+  background: linear-gradient(to top, #081321 0%, transparent 100%);
+}
+
+/* hero content needs to sit above the canvas */
+#home > .max-w-7xl {
+  position: relative;
+  z-index: 10;
+}
+
+@media (max-width: 767px) {
+  #hero-hyperspeed {
+    opacity: 0.45;
+  }
+  #home > .max-w-7xl {
+    position: relative;
+  }
+  #home > .max-w-7xl::before {
+    content: "";
+    position: absolute;
+    inset: -24px -16px;
+    background: radial-gradient(ellipse at center, rgba(8, 19, 33, 0.75) 0%, rgba(8, 19, 33, 0.35) 60%, transparent 100%);
+    z-index: -1;
+    border-radius: 24px;
+  }
+}
+
+/* Mobile: swap the WebGL hero for a static image instead */
+#hero-mobile-fallback {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  #hero-hyperspeed {
+    display: none;
+  }
+  #hero-mobile-fallback {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
+  #hero-mobile-fallback::after,
+  #home::after {
+    content: "";
+  }
+}
+
+@media (max-width: 767px) {
+  #home {
+    position: relative;
+  }
+  #home::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(8,19,33,0.55) 0%, rgba(8,19,33,0.85) 55%, #081321 100%);
+    z-index: 1;
+    pointer-events: none;
+  }
+  #home > .max-w-7xl {
+    z-index: 2;
+  }
+}

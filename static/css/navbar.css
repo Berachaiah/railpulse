@@ -1,0 +1,148 @@
+/* ============================================
+   NAVBAR — replace static/css/navbar.css
+   ============================================ */
+
+header nav.glass {
+  background: linear-gradient(180deg, rgba(14, 27, 46, 0.72), rgba(8, 19, 33, 0.55));
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+}
+
+/* Thin animated rail-light line along the top edge of the navbar */
+header nav.glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(34, 211, 238, 0.7) 20%,
+    rgba(99, 102, 241, 0.7) 50%,
+    rgba(34, 211, 238, 0.7) 80%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: rail-sweep 6s linear infinite;
+  border-radius: inherit;
+}
+
+@keyframes rail-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Pulsing signal dot next to the logotype */
+.nav-signal {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22D3EE;
+  box-shadow: 0 0 8px 2px rgba(34, 211, 238, 0.7);
+  animation: signal-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes signal-pulse {
+  0%, 100% { opacity: 1;   box-shadow: 0 0 6px 2px rgba(34, 211, 238, 0.6); }
+  50%      { opacity: 0.4; box-shadow: 0 0 12px 4px rgba(99, 102, 241, 0.7); }
+}
+
+/* Nav links — underline grows from center like a track light, tints
+   indigo->cyan on hover to echo the background palette */
+.nav-link {
+  position: relative;
+  color: #CBD5E1;
+  font-weight: 500;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  padding-bottom: 4px;
+  transition: color 0.25s ease;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 0%;
+  height: 2px;
+  background: linear-gradient(90deg, #6366F1, #22D3EE);
+  border-radius: 2px;
+  transition: width 0.3s ease, left 0.3s ease;
+}
+
+.nav-link:hover {
+  color: #ffffff;
+}
+
+.nav-link:hover::after {
+  left: 0%;
+  width: 100%;
+}
+
+/* Sign in / Get started buttons */
+.btn-secondary {
+  color: #E2E8F0;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.25s ease, border-color 0.25s ease, transform 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(34, 211, 238, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  position: relative;
+  box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.5);
+  transition: box-shadow 0.3s ease, transform 0.2s ease, filter 0.2s ease;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 4px 24px 0 rgba(34, 211, 238, 0.45);
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+/* Mobile menu button */
+#menuButton {
+  color: #E2E8F0;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+#menuButton:hover {
+  color: #22D3EE;
+}
+
+/* Mobile dropdown panel */
+#mobileMenu {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#mobileMenu a {
+  color: #CBD5E1;
+  font-weight: 500;
+  transition: color 0.2s ease, padding-left 0.2s ease;
+}
+
+#mobileMenu a:hover {
+  color: #22D3EE;
+  padding-left: 4px;
+}
+
+/* Give the navbar a subtle glow border once the page is scrolled
+   (toggle a .is-scrolled class from main.js if you want this reactive) */
+header nav.glass.is-scrolled {
+  border-color: rgba(34, 211, 238, 0.25);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(34, 211, 238, 0.08);
+}

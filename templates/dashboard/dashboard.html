@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | RailPulse{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+
+    <div class="mb-6">
+        <h1 class="board-font text-2xl font-bold text-[#001D3C]">Welcome back, {{ current_user.first_name }}</h1>
+        <p class="text-slate-500 mt-1">Here's what's happening on your tracked route.</p>
+    </div>
+
+    {% if tracked_route %}
+    <div class="board-rail board-scanlines relative rounded-2xl overflow-hidden mb-8 {{ 'board-delayed' if board_status == 'delayed' else '' }}"
+         style="background: radial-gradient(120% 160% at 0% 0%, #013063 0%, #001D3C 55%, #00142c 100%); box-shadow: var(--shadow-navy);">
+        <div class="px-6 sm:px-7 py-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-white/[0.07] border border-white/10 flex items-center justify-center shrink-0" style="box-shadow: inset 0 1px 0 rgba(255,255,255,.08);">
+                    <svg class="icon text-white/85"><use href="#icon-train"/></svg>
+                </div>
+                <div>
+                    <p class="text-[10.5px] tracking-[0.18em] uppercase text-white/45 mb-1">Tracked route</p>
+                    <p class="board-font text-white text-xl sm:text-[1.65rem] font-semibold leading-tight">{{ tracked_route }}</p>
+                    <p class="text-white/55 text-sm mt-0.5">{{ tracked_station }}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-8 sm:pl-6 sm:border-l sm:border-white/10">
+                <div>
+                    <p class="text-[10.5px] tracking-[0.18em] uppercase text-white/45 mb-1.5">Status</p>
+                    <p class="board-font text-lg font-semibold flex items-center gap-2 {{ 'text-[#E8A33D]' if board_status == 'delayed' else 'text-[#3AC971]' }}">
+                        <span class="led-dot w-2 h-2 rounded-full {{ 'bg-[#E8A33D] text-[#E8A33D]' if board_status == 'delayed' else 'bg-[#3AC971] text-[#3AC971]' }}"></span>
+                        {{ 'Delayed' if board_status == 'delayed' else 'Monitoring' }}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-[10.5px] tracking-[0.18em] uppercase text-white/45 mb-1.5">
+                        {{ 'Minutes late' if board_status == 'delayed' else 'Alert threshold' }}
+                    </p>
+                    <p class="board-font text-lg font-semibold text-white tabular-nums">
+                        {{ minutes_late | default(delay_threshold_minute) }} min
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center mb-8" style="box-shadow: var(--shadow-sm);">
+        <div class="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+            <svg class="icon"><use href="#icon-train"/></svg>
+        </div>
+        <p class="text-slate-500">You're not tracking a route yet.</p>
+        <a href="/preferences" data-loading class="relative inline-block mt-3 text-sm font-medium text-[#001D3C] bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg transition">
+            <span class="btn-label">Set up route tracking</span>
+            <span class="btn-spinner"><svg><use href="#icon-loader"/></svg></span>
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+        <div class="card-hover surface rounded-2xl p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-sm text-slate-500">Active Alerts</p>
+                    <p class="board-font text-3xl font-bold text-[#001D3C] mt-1">{{ active_alerts_count | default('—') }}</p>
+                </div>
+                <div class="badge-glow w-10 h-10 rounded-xl bg-[#E8A33D]/10 text-[#E8A33D] flex items-center justify-center">
+                    <svg class="icon" style="width:18px;height:18px"><use href="#icon-bell"/></svg>
+                </div>
+            </div>
+            <svg viewBox="0 0 100 28" class="w-full h-7 mt-3" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="grad-alerts" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#E8A33D" stop-opacity="0.35"/>
+                        <stop offset="100%" stop-color="#E8A33D" stop-opacity="0"/>
+                    </linearGradient>
+                </defs>
+                <path d="M0 18 L15 16 L30 19 L45 10 L60 13 L75 6 L100 9 L100 28 L0 28 Z" fill="url(#grad-alerts)"/>
+                <path d="M0 18 L15 16 L30 19 L45 10 L60 13 L75 6 L100 9" fill="none" stroke="#E8A33D" stroke-width="2" stroke-linecap="round" style="filter: drop-shadow(0 1px 3px rgba(232,163,61,.4));"/>
+            </svg>
+        </div>
+        <div class="card-hover surface rounded-2xl p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-sm text-slate-500">On-Time Performance</p>
+                    <p class="board-font text-3xl font-bold text-[#3AC971] mt-1">{{ on_time_pct | default('—', true) }}</p>
+                </div>
+                <div class="badge-glow w-10 h-10 rounded-xl bg-[#3AC971]/10 text-[#3AC971] flex items-center justify-center">
+                    <svg class="icon" style="width:18px;height:18px"><use href="#icon-check-circle"/></svg>
+                </div>
+            </div>
+            <svg viewBox="0 0 100 28" class="w-full h-7 mt-3" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="grad-ontime" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#3AC971" stop-opacity="0.35"/>
+                        <stop offset="100%" stop-color="#3AC971" stop-opacity="0"/>
+                    </linearGradient>
+                </defs>
+                <path d="M0 15 L15 17 L30 12 L45 14 L60 8 L75 10 L100 4 L100 28 L0 28 Z" fill="url(#grad-ontime)"/>
+                <path d="M0 15 L15 17 L30 12 L45 14 L60 8 L75 10 L100 4" fill="none" stroke="#3AC971" stroke-width="2" stroke-linecap="round" style="filter: drop-shadow(0 1px 3px rgba(58,201,113,.4));"/>
+            </svg>
+        </div>
+        <div class="card-hover surface rounded-2xl p-5">
+            <div class="flex items-start justify-between">
+                <div>
+                    <p class="text-sm text-slate-500">Tracked Routes</p>
+                    <p class="board-font text-3xl font-bold text-[#001D3C] mt-1">{{ tracked_routes_count | default('—') }}</p>
+                </div>
+                <div class="badge-glow w-10 h-10 rounded-xl bg-[#001D3C]/10 text-[#001D3C] flex items-center justify-center">
+                    <svg class="icon" style="width:18px;height:18px"><use href="#icon-train"/></svg>
+                </div>
+            </div>
+            <svg viewBox="0 0 100 28" class="w-full h-7 mt-3" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="grad-routes" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#001D3C" stop-opacity="0.28"/>
+                        <stop offset="100%" stop-color="#001D3C" stop-opacity="0"/>
+                    </linearGradient>
+                </defs>
+                <path d="M0 16 L20 16 L20 10 L45 10 L45 16 L100 16 L100 28 L0 28 Z" fill="url(#grad-routes)"/>
+                <path d="M0 16 L20 16 L20 10 L45 10 L45 16 L100 16" fill="none" stroke="#001D3C" stroke-width="2" stroke-linecap="round" opacity="0.55"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="surface-raised rounded-2xl overflow-hidden">
+        <div class="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="board-font font-semibold text-[#001D3C]">Recent Notifications</h2>
+            {% if notifications %}
+            <a href="/notifications" class="text-sm font-medium text-[#001D3C]/70 hover:text-[#001D3C] transition-colors">See all</a>
+            {% endif %}
+        </div>
+
+        {% if notifications %}
+        <div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead class="text-left text-slate-500 bg-slate-50/70">
+                <tr>
+                    <th class="px-5 sm:px-6 py-3 font-medium text-xs tracking-wide uppercase">Route</th>
+                    <th class="px-5 sm:px-6 py-3 font-medium text-xs tracking-wide uppercase">Station</th>
+                    <th class="px-5 sm:px-6 py-3 font-medium text-xs tracking-wide uppercase">Message</th>
+                    <th class="px-5 sm:px-6 py-3 font-medium text-xs tracking-wide uppercase">Status</th>
+                    <th class="px-5 sm:px-6 py-3 font-medium text-xs tracking-wide uppercase">Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for n in notifications %}
+                <tr class="border-t border-slate-100 hover:bg-slate-50/80 transition-colors">
+                    <td class="px-5 sm:px-6 py-3.5 font-medium text-[#001D3C]">{{ n.route }}</td>
+                    <td class="px-5 sm:px-6 py-3.5 text-slate-700">{{ n.station }}</td>
+                    <td class="px-5 sm:px-6 py-3.5 text-slate-600">{{ n.message }}</td>
+                    <td class="px-5 sm:px-6 py-3.5">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium
+                            {% if n.delivery_status == 'Sent' %}bg-green-50 text-green-700 ring-1 ring-inset ring-green-200
+                            {% else %}bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200{% endif %}">
+                            <span class="led-dot w-1.5 h-1.5 rounded-full {{ 'bg-green-500 text-green-500' if n.delivery_status == 'Sent' else 'bg-slate-400 text-slate-400' }}"></span>
+                            {{ n.delivery_status }}
+                        </span>
+                    </td>
+                    <td class="px-5 sm:px-6 py-3.5 text-slate-500">{{ n.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table></div>
+        {% else %}
+        <div class="px-5 py-10 text-center">
+            <div class="w-11 h-11 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                <svg class="icon"><use href="#icon-bell"/></svg>
+            </div>
+            <p class="text-slate-400">No notifications yet — this is where your delay alerts will show up.</p>
+        </div>
+        {% endif %}
+    </div>
+
+{% endblock %}

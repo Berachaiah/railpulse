@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html class="scroll-smooth" lang="en-GB">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RailPulse | Intelligence Platform Login</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="{{ url_for('static', path='js/tailwind-config.js') }}?v=3"></script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .rail-pulse-gradient {
+            background: linear-gradient(135deg, #001e40 0%, #003366 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface-white font-body-md text-on-surface antialiased overflow-x-hidden lg:overflow-hidden">
+<main class="flex h-screen">
+<section class="hidden lg:flex lg:w-1/2 xl:w-3/5 2xl:w-2/3 relative overflow-hidden rail-pulse-gradient">
+<div class="absolute inset-0 w-full h-full opacity-60" style="display:block;">
+<canvas id="shader-canvas-ANIMATION_24" style="display:block;width:100%;height:100%"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('shader-canvas-ANIMATION_24');
+  function syncSize() {
+    const w = canvas.clientWidth  || 1280;
+    const h = canvas.clientHeight || 720;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width  = w;
+      canvas.height = h;
+    }
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncSize).observe(canvas);
+  }
+  syncSize();
+
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return;
+  const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+  const fs = `precision highp float;
+uniform float u_time;
+uniform vec2 u_resolution;
+uniform vec2 u_mouse;
+
+float line(vec2 uv, float speed, float offset, float width) {
+    float n = sin(uv.x * 2.0 + u_time * speed + offset) * 0.1;
+    return smoothstep(width, 0.0, abs(uv.y - 0.5 - n));
+}
+
+void main() {
+    vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+    vec3 color = vec3(0.0039, 0.2, 0.4);
+
+    float t1 = line(uv, 0.5, 0.0, 0.002);
+    float t2 = line(uv, -0.3, 1.5, 0.0015);
+    float t3 = line(uv, 0.8, 3.0, 0.0025);
+
+    color = mix(color, vec3(0.18, 0.8, 0.44), t1 * 0.5);
+    color = mix(color, vec3(0.0, 0.5, 0.8), t2 * 0.3);
+    color = mix(color, vec3(0.18, 0.8, 0.44), t3 * 0.4);
+
+    color *= (1.0 - length(uv - 0.5) * 0.5);
+
+    gl_FragColor = vec4(color, 1.0);
+}`;
+  function cs(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+  gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uRes = gl.getUniformLocation(prog, 'u_resolution');
+  const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+  window.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      const nx = (event.clientX - rect.left) / rect.width;
+      const ny = 1.0 - (event.clientY - rect.top) / rect.height;
+      mouse.x = nx * canvas.width;
+      mouse.y = ny * canvas.height;
+    }
+  });
+
+  function render(t) {
+    if (typeof ResizeObserver === 'undefined') syncSize();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  }
+  render(0);
+})();
+</script>
+</div>
+<div class="absolute top-6 left-6 lg:top-8 lg:left-8 xl:top-12 xl:left-12 z-10">
+<div class="flex items-center gap-4">
+<img src="{{ url_for('static', path='images/favicon-navy-circle.svg') }}" alt="RailPulse Icon" class="h-16 w-16 md:h-20 md:w-20 object-contain">
+<span class="text-2xl md:text-3xl font-extrabold text-surface-white tracking-tight">RailPulse</span>
+</div>
+</div>
+<div class="relative z-10 w-full h-full flex flex-col justify-end p-8 lg:p-10 xl:p-14 2xl:p-20">
+<div class="max-w-2xl mb-6 lg:mb-6 xl:mb-10 2xl:mb-12">
+<h1 class="font-display-lg text-display-lg lg:text-[2.25rem] xl:text-[2.75rem] 2xl:text-display-lg text-surface-white mb-3 lg:mb-3 xl:mb-5 2xl:mb-6 leading-tight">
+                        Powering the future of British rail connectivity.
+                    </h1>
+<p class="font-body-lg text-body-lg lg:text-sm xl:text-base 2xl:text-body-lg text-surface-white/90 leading-relaxed">
+                        Real-time telemetry, predictive maintenance, and strategic infrastructure intelligence for the UK's high-speed rolling stock networks.
+                    </p>
+</div>
+<div class="grid grid-cols-2 gap-3 lg:gap-3 xl:gap-4 w-full max-w-3xl">
+<div class="glass-card p-4 lg:p-4 xl:p-6 rounded-xl flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-surface-white/80 font-semibold uppercase tracking-widest">Network Health</span>
+<div class="w-2 h-2 rounded-full bg-secondary-fixed shadow-[0_0_8px_#6bfe9c]"></div>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl text-surface-white">99.98%</span>
+<span class="text-secondary-fixed text-sm font-bold">↑ 0.02%</span>
+</div>
+<div class="w-full h-1 bg-surface-white/10 rounded-full overflow-hidden mt-2">
+<div class="h-full bg-secondary-fixed w-[99.98%]"></div>
+</div>
+</div>
+<div class="glass-card p-4 lg:p-4 xl:p-6 rounded-xl flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="font-label-sm text-label-sm text-surface-white/80 font-semibold uppercase tracking-widest">AI Core Status</span>
+<span class="material-symbols-outlined text-surface-white/80 text-sm">memory</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline-xl text-headline-xl text-surface-white">Active</span>
+<span class="text-surface-white/70 text-xs font-mono" id="latency-value">LATENCY: 4ms</span>
+</div>
+<div class="flex gap-1 mt-2">
+<div class="h-1 flex-1 bg-secondary-fixed rounded-full"></div>
+<div class="h-1 flex-1 bg-secondary-fixed rounded-full"></div>
+<div class="h-1 flex-1 bg-secondary-fixed rounded-full"></div>
+<div class="h-1 flex-1 bg-secondary-fixed/30 rounded-full animate-pulse"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute -bottom-24 -right-24 w-96 h-96 bg-primary-container rounded-full blur-[120px] opacity-40"></div>
+</section>
+<!-- Right Side: Login Form -->
+<section class="w-full lg:w-1/2 xl:w-2/5 2xl:w-1/3 bg-surface-white flex flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 md:px-16 md:py-12 lg:px-8 lg:py-4 xl:px-12 xl:py-8 2xl:px-20 2xl:py-12 overflow-y-auto">
+<a href="/" class="lg:hidden flex items-center justify-center gap-3 mb-6 group">
+<img src="{{ url_for('static', path='images/favicon-navy-circle.svg') }}" alt="RailPulse Icon" class="h-12 w-12 object-contain group-hover:scale-105 transition-transform duration-300">
+<div>
+<span class="text-xl font-extrabold tracking-tight text-on-surface leading-none">RailPulse</span>
+<span class="block text-[11px] text-on-surface-variant font-medium tracking-wide uppercase">Smart Railway Intelligence</span>
+</div>
+</a>
+<div class="flex-grow flex flex-col justify-center max-w-sm mx-auto w-full">
+<header class="mb-4 md:mb-5 lg:mb-3 xl:mb-4 2xl:mb-6 text-center lg:text-left">
+<h2 class="font-headline-xl text-headline-xl lg:text-xl xl:text-headline-xl text-on-surface mb-2">Welcome back</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Access the national intelligence terminal.</p>
+</header>
+
+{% if error %}
+<div class="mb-6 px-4 py-3 rounded-xl bg-rail-red/10 border border-rail-red/30 text-rail-red font-body-md text-body-md">
+    {{ error }}
+</div>
+{% endif %}
+
+<form class="space-y-4 md:space-y-5 lg:space-y-3 xl:space-y-4 2xl:space-y-5" method="post" action="{{ url_for('sign_in_submit') }}">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface" for="email">Email address</label>
+<div class="relative">
+<input class="w-full px-4 py-2.5 lg:py-2 xl:py-2.5 2xl:py-3 rounded-xl border border-outline-variant focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all bg-surface-container-lowest outline-none placeholder:text-outline" id="email" name="email" placeholder="name@organisation.gov.uk" type="email" value="{{ form_data.email if form_data else '' }}" required/>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<label class="font-label-md text-label-md text-on-surface" for="password">Password</label>
+<a class="text-label-sm font-semibold text-primary hover:underline underline-offset-4" href="#">Forgot password?</a>
+</div>
+<input class="w-full px-4 py-2.5 lg:py-2 xl:py-2.5 2xl:py-3 rounded-xl border border-outline-variant focus:ring-2 focus:ring-primary/10 focus:border-primary transition-all bg-surface-container-lowest outline-none placeholder:text-outline" id="password" name="password" placeholder="••••••••" type="password" required/>
+</div>
+<div class="flex items-center gap-3">
+<input class="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary" id="remember" name="remember" type="checkbox"/>
+<label class="font-label-sm text-label-sm text-on-surface-variant" for="remember">Keep me signed in for 30 days</label>
+</div>
+<button class="w-full bg-primary text-on-primary font-label-md text-label-md py-3.5 lg:py-2.5 xl:py-3 2xl:py-4 rounded-xl shadow-lg hover:shadow-primary/20 active:scale-[0.98] transition-all duration-200" type="submit">
+                        Sign In
+                    </button>
+</form>
+<div class="relative my-4 md:my-5 lg:my-3 xl:my-4 2xl:my-5">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant/50"></div>
+</div>
+<div class="relative flex justify-center text-label-sm">
+<span class="px-4 bg-surface-white text-outline uppercase tracking-wider">Or continue with</span>
+</div>
+</div>
+<button type="button" id="google-signin-btn" class="w-full flex items-center justify-center gap-3 px-4 py-2.5 lg:py-2 xl:py-2.5 2xl:py-3 border border-outline-variant rounded-xl hover:bg-surface-container-low transition-colors duration-200">
+<svg class="h-5 w-5" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+<path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+<path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+<path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+</svg>
+<span class="font-label-md text-label-md">Continue with Google</span>
+</button>
+</div>
+<footer class="mt-8 md:mt-12 lg:mt-6 xl:mt-8 2xl:mt-12 text-center">
+<p class="font-body-md text-body-md text-on-surface-variant">
+                    Don't have an account?
+                    <a class="font-bold text-primary hover:underline underline-offset-4" href="{{ url_for('sign_up_page') }}">Sign Up</a>
+</p>
+<div class="mt-8 flex justify-center gap-6 text-label-sm text-outline">
+<a class="hover:text-primary transition-colors" href="#">Support</a>
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Carriage</a>
+</div>
+</footer>
+</section>
+</main>
+<script>
+        const latencyValue = document.getElementById('latency-value');
+        setInterval(() => {
+            const randomLatency = Math.floor(Math.random() * 5) + 2;
+            if (latencyValue) latencyValue.textContent = `LATENCY: ${randomLatency}ms`;
+        }, 3000);
+
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.closest('div').classList.add('scale-[1.01]', 'transition-transform');
+            });
+            input.addEventListener('blur', () => {
+                input.closest('div').classList.remove('scale-[1.01]');
+            });
+        });
+    </script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+
+    const firebaseConfig = {{ firebase_config_json | safe }};
+    const firebaseApp = initializeApp(firebaseConfig);
+    const firebaseAuth = getAuth(firebaseApp);
+    const googleProvider = new GoogleAuthProvider();
+
+    const googleBtn = document.getElementById('google-signin-btn');
+    if (googleBtn) {
+        googleBtn.addEventListener('click', async () => {
+            googleBtn.disabled = true;
+            try {
+                const result = await signInWithPopup(firebaseAuth, googleProvider);
+                const idToken = await result.user.getIdToken();
+
+                const res = await fetch('/auth/google/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken }),
+                });
+
+                if (!res.ok) {
+                    throw new Error('Sign-in failed');
+                }
+
+                const data = await res.json();
+                window.location.href = data.redirect;
+            } catch (err) {
+                console.error(err);
+                alert('Google sign-in failed. Please try again.');
+                googleBtn.disabled = false;
+            }
+        });
+    }
+</script>
+</body>
+</html>

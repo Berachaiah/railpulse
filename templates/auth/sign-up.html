@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html class="scroll-smooth" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RailPulse | Empowering British Rail with AI</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="{{ url_for('static', path='js/tailwind-config.js') }}?v=3"></script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .form-container {
+            max-width: 480px;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+
+        .shimmer {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .transition-all-300 { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="bg-surface text-on-surface lg:overflow-hidden">
+<main class="flex h-screen flex-col lg:flex-row">
+<!-- Left Side: Abstract Network Visualization -->
+<section class="hidden lg:flex lg:w-1/2 relative bg-primary overflow-hidden items-center justify-center p-8 md:p-12">
+<div class="absolute inset-0 w-full h-full opacity-60" style="display:block;">
+<script src="https://ajax.googleapis.com/ajax/libs/threejs/r125/three.min.js"></script>
+<div id="threejs-container-ANIMATION_23" style="width:100%;height:100%"></div>
+<script>
+(function() {
+  const container = document.getElementById('threejs-container-ANIMATION_23');
+  const width = container.clientWidth || window.innerWidth;
+  const height = container.clientHeight || window.innerHeight;
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setSize(width, height);
+  container.appendChild(renderer.domElement);
+
+  const ukOutline = [
+      [0, 2], [1, 3], [1.5, 4], [2, 5], [1.8, 6], [1.5, 7], [1, 7.5],
+      [0.5, 7], [0, 6], [-0.5, 5], [-1, 4], [-1.2, 3], [-1.5, 2],
+      [-1.8, 1], [-2, 0], [-1.5, -1], [-1, -1.5], [0, -2], [1, -1.8], [2, -1], [2.2, 0.5], [1.5, 1.5], [0, 2]
+  ];
+
+  const geometry = new THREE.BufferGeometry();
+  const vertices = new Float32Array(ukOutline.flat().map(v => v * 0.5).concat(ukOutline.map(() => 0)).flat());
+  const material = new THREE.LineBasicMaterial({ color: 0x2ecc71, transparent: true, opacity: 0.5 });
+  const map = new THREE.Line(geometry, material);
+  scene.add(map);
+
+  const particleCount = 20;
+  const particles = new THREE.Group();
+  for (let i = 0; i < particleCount; i++) {
+      const pGeo = new THREE.SphereGeometry(0.02, 8, 8);
+      const pMat = new THREE.MeshBasicMaterial({ color: 0x2ecc71 });
+      const p = new THREE.Mesh(pGeo, pMat);
+      p.position.set((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 4, 0);
+      p.userData = { speed: 0.01 + Math.random() * 0.02 };
+      particles.add(p);
+  }
+  scene.add(particles);
+
+  camera.position.z = 5;
+
+  function animate() {
+      requestAnimationFrame(animate);
+      particles.children.forEach(p => {
+          p.position.y -= p.userData.speed;
+          if (p.position.y < -2.5) p.position.y = 2.5;
+          p.scale.setScalar(1 + Math.sin(Date.now() * 0.005 + p.position.y) * 0.5);
+      });
+      renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+      const w = container.clientWidth || window.innerWidth;
+      const h = container.clientHeight || window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+  });
+})();
+</script>
+</div>
+<!-- Overlay Content -->
+<div class="relative z-10 max-w-xl text-left">
+<div class="mb-12">
+<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary-container/20 text-secondary-fixed font-label-md text-label-md border border-secondary-container/30 backdrop-blur-sm">
+<span class="material-symbols-outlined text-[16px]">bolt</span>
+                        Next-Generation Logistics
+                    </span>
+</div>
+<h1 class="font-display-lg text-display-lg text-surface-white mb-6 leading-tight">
+                    Empowering British Rail with AI.
+                </h1>
+<p class="font-body-lg text-body-lg text-surface-white/90 mb-12">
+                    Predictive maintenance, real-time scheduling, and rolling stock intelligence powered by the UK's most advanced neural network for rail operations.
+                </p>
+<div class="grid grid-cols-2 gap-8">
+<div class="space-y-2">
+<div class="text-secondary-fixed font-headline-lg text-headline-lg">99.8%</div>
+<div class="text-surface-white/80 font-label-md text-label-md font-semibold uppercase tracking-wider">Data Accuracy</div>
+</div>
+<div class="space-y-2">
+<div class="text-secondary-fixed font-headline-lg text-headline-lg">15M+</div>
+<div class="text-surface-white/80 font-label-md text-label-md font-semibold uppercase tracking-wider">Daily Signals</div>
+</div>
+</div>
+</div>
+<!-- Brand Logo Anchor -->
+<div class="absolute top-8 left-8 md:top-12 md:left-12 flex items-center gap-4">
+<img src="{{ url_for('static', path='images/favicon-navy-circle.svg') }}" alt="RailPulse Icon" class="h-16 w-16 md:h-20 md:w-20 object-contain">
+<span class="text-2xl md:text-3xl font-extrabold text-surface-white tracking-tight">RailPulse</span>
+</div>
+</section>
+<!-- Right Side: Registration Form -->
+<section class="w-full lg:w-1/2 bg-surface-white flex flex-col justify-center items-center px-5 sm:px-8 md:px-12 py-4 lg:py-3 lg:overflow-y-auto">
+<div class="form-container w-full">
+<!-- Mobile Branding -->
+<div class="lg:hidden flex items-center gap-2 mb-8">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-surface-white text-[18px]">train</span>
+</div>
+<span class="font-headline-lg text-headline-lg text-primary tracking-tight">RailPulse</span>
+</div>
+<div class="mb-3">
+<h2 class="font-headline-xl text-headline-xl lg:text-xl xl:text-headline-xl text-primary mb-1">Create your account</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                        Join the network of intelligence powering the future of rail. Already have an account?
+                        <a class="text-primary font-semibold hover:underline underline-offset-4" href="{{ url_for('sign_in_page') }}">Sign in</a>
+</p>
+</div>
+<!-- Multi-step Indicator -->
+<div class="flex items-center gap-4 mb-3">
+<div class="flex-1 h-1.5 rounded-full bg-primary relative overflow-hidden">
+<div class="absolute inset-0 shimmer opacity-50"></div>
+</div>
+<div class="flex-1 h-1.5 rounded-full bg-surface-container"></div>
+<div class="flex-1 h-1.5 rounded-full bg-surface-container"></div>
+<span class="text-label-sm font-label-sm text-primary uppercase ml-2 hidden sm:inline">Step 1 of 3</span>
+</div>
+
+{% if error %}
+<div class="mb-6 px-4 py-2 rounded-[12px] bg-rail-red/10 border border-rail-red/30 text-rail-red font-body-md text-body-md">
+    {{ error }}
+</div>
+{% endif %}
+
+<form class="space-y-2" id="registration-form" method="post" action="{{ url_for('sign_up_submit') }}">
+<!-- Name Fields -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface" for="first-name">First Name</label>
+<input class="w-full px-4 py-2 rounded-[12px] border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all-300 font-body-md text-body-md text-on-surface bg-surface-container-lowest" id="first-name" name="first_name" placeholder="Alex" type="text" value="{{ form_data.first_name if form_data else '' }}" required/>
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface" for="last-name">Last Name</label>
+<input class="w-full px-4 py-2 rounded-[12px] border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all-300 font-body-md text-body-md text-on-surface bg-surface-container-lowest" id="last-name" name="last_name" placeholder="Sterling" type="text" value="{{ form_data.last_name if form_data else '' }}" required/>
+</div>
+</div>
+<!-- Email Field -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface" for="email">Professional Email</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-[20px]">mail</span>
+<input class="w-full pl-12 pr-4 py-2 rounded-[12px] border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all-300 font-body-md text-body-md text-on-surface bg-surface-container-lowest" id="email" name="email" placeholder="a.sterling@networkrail.co.uk" type="email" value="{{ form_data.email if form_data else '' }}" required/>
+</div>
+</div>
+<!-- Password Field & Strength Meter -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface" for="password">Create Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-[20px]">lock</span>
+<input class="w-full pl-12 pr-12 py-2 rounded-[12px] border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all-300 font-body-md text-body-md text-on-surface bg-surface-container-lowest" id="password" name="password" placeholder="••••••••••••" type="password" minlength="8" required/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors" type="button" id="toggle-password">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+<!-- Strength Meter -->
+<div class="pt-1">
+<div class="flex gap-1.5 h-1">
+<div class="flex-1 rounded-full bg-surface-container transition-all-300" id="strength-1"></div>
+<div class="flex-1 rounded-full bg-surface-container transition-all-300" id="strength-2"></div>
+<div class="flex-1 rounded-full bg-surface-container transition-all-300" id="strength-3"></div>
+<div class="flex-1 rounded-full bg-surface-container transition-all-300" id="strength-4"></div>
+</div>
+<p class="text-[11px] font-label-sm text-outline-variant mt-1 flex flex-col sm:flex-row justify-between gap-1">
+<span>Minimum 8 characters (12+ recommended)</span>
+<span class="font-bold" id="strength-label">Empty</span>
+</p>
+</div>
+</div>
+<!-- GDPR & Terms -->
+<div class="space-y-1 pt-1">
+<label class="flex items-start gap-2 cursor-pointer group">
+<input class="mt-1 w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary transition-all-300" type="checkbox" name="agree_terms" value="1" required/>
+<span class="font-body-md text-label-md text-on-surface-variant group-hover:text-on-surface transition-colors">
+                                I agree to the <a class="text-primary font-semibold hover:underline" href="#">Terms of Service</a> and <a class="text-primary font-semibold hover:underline" href="#">Privacy Policy</a>.
+                            </span>
+</label>
+<label class="flex items-start gap-2 cursor-pointer group">
+<input class="mt-1 w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary transition-all-300" type="checkbox" name="agree_gdpr" value="1" required/>
+<span class="font-body-md text-label-md text-on-surface-variant group-hover:text-on-surface transition-colors">
+                                I consent to GDPR data processing for operational rail reporting and safety alerts.
+                            </span>
+</label>
+</div>
+<!-- Primary Action -->
+<button class="w-full bg-primary text-surface-white font-label-md text-label-md py-2.5 rounded-[12px] shadow-lg hover:shadow-xl hover:opacity-90 active:scale-[0.98] transition-all-300 flex items-center justify-center gap-2 mt-1" type="submit">
+                        Create Account
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</form>
+<div class="relative my-2">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-outline-variant/50"></div>
+</div>
+<div class="relative flex justify-center text-label-sm">
+<span class="px-4 bg-surface-white text-outline uppercase tracking-wider">Or continue with</span>
+</div>
+</div>
+<button type="button" id="google-signin-btn" class="w-full flex items-center justify-center gap-3 px-4 py-2 border border-outline-variant rounded-xl hover:bg-surface-container-low transition-colors duration-200">
+<svg class="h-4 w-4" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+<path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+<path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+<path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+</svg>
+<span class="font-label-md text-label-md">Continue with Google</span>
+</button>
+<!-- Help Link -->
+<div class="mt-2 pt-2 border-t border-surface-container flex flex-col sm:flex-row gap-3 sm:gap-0 justify-between items-center text-label-sm font-label-sm text-outline">
+<span>© 2026 RailPulse Intelligence</span>
+<a class="flex items-center gap-1 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[14px]">support_agent</span>
+                        Support
+                    </a>
+</div>
+</div>
+</section>
+</main>
+<!-- Micro-interactions Script -->
+<script>
+        const passwordInput = document.getElementById('password');
+        const togglePassword = document.getElementById('toggle-password');
+        const strengthBars = [
+            document.getElementById('strength-1'),
+            document.getElementById('strength-2'),
+            document.getElementById('strength-3'),
+            document.getElementById('strength-4')
+        ];
+        const strengthLabel = document.getElementById('strength-label');
+
+        togglePassword.addEventListener('click', () => {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            togglePassword.querySelector('.material-symbols-outlined').textContent = isPassword ? 'visibility_off' : 'visibility';
+        });
+
+        passwordInput.addEventListener('input', (e) => {
+            const val = e.target.value;
+            let strength = 0;
+
+            if (val.length > 5) strength++;
+            if (val.length > 10) strength++;
+            if (/[A-Z]/.test(val) && /[0-9]/.test(val)) strength++;
+            if (/[^A-Za-z0-9]/.test(val)) strength++;
+
+            strengthBars.forEach(bar => {
+                bar.classList.remove('bg-rail-red', 'bg-amber-warning', 'bg-secondary', 'bg-primary');
+                bar.classList.add('bg-surface-container');
+            });
+
+            if (val.length === 0) {
+                strengthLabel.textContent = 'Empty';
+                strengthLabel.className = 'font-bold';
+                return;
+            }
+
+            const colors = ['bg-rail-red', 'bg-amber-warning', 'bg-secondary', 'bg-primary'];
+            const labels = ['Weak', 'Fair', 'Strong', 'Excellent'];
+            const idx = Math.max(strength - 1, 0);
+
+            for (let i = 0; i <= idx; i++) {
+                strengthBars[i].classList.remove('bg-surface-container');
+                strengthBars[i].classList.add(colors[idx]);
+            }
+            strengthLabel.textContent = labels[idx];
+            strengthLabel.className = 'font-bold ' + colors[idx].replace('bg-', 'text-');
+        });
+    </script>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
+
+    const firebaseConfig = {{ firebase_config_json | safe }};
+    const firebaseApp = initializeApp(firebaseConfig);
+    const firebaseAuth = getAuth(firebaseApp);
+    const googleProvider = new GoogleAuthProvider();
+
+    const googleBtn = document.getElementById('google-signin-btn');
+    if (googleBtn) {
+        googleBtn.addEventListener('click', async () => {
+            googleBtn.disabled = true;
+            try {
+                const result = await signInWithPopup(firebaseAuth, googleProvider);
+                const idToken = await result.user.getIdToken();
+
+                const res = await fetch('/auth/google/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken }),
+                });
+
+                if (!res.ok) {
+                    throw new Error('Sign-in failed');
+                }
+
+                const data = await res.json();
+                window.location.href = data.redirect;
+            } catch (err) {
+                console.error(err);
+                alert('Google sign-in failed. Please try again.');
+                googleBtn.disabled = false;
+            }
+        });
+    }
+</script>
+</body>
+</html>
