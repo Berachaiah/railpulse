@@ -136,12 +136,10 @@
 <section class="w-full lg:w-1/2 bg-surface-white flex flex-col justify-center items-center px-5 sm:px-8 md:px-12 py-4 lg:py-3 lg:overflow-y-auto">
 <div class="form-container w-full">
 <!-- Mobile Branding -->
-<div class="lg:hidden flex items-center gap-2 mb-8">
-<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-<span class="material-symbols-outlined text-surface-white text-[18px]">train</span>
-</div>
+<a href="/" class="lg:hidden flex items-center gap-3 mb-8 group">
+<img src="{{ url_for('static', path='images/favicon-navy-circle.svg') }}" alt="RailPulse Icon" class="h-10 w-10 object-contain group-hover:scale-105 transition-transform duration-300">
 <span class="font-headline-lg text-headline-lg text-primary tracking-tight">RailPulse</span>
-</div>
+</a>
 <div class="mb-3">
 <h2 class="font-headline-xl text-headline-xl lg:text-xl xl:text-headline-xl text-primary mb-1">Create your account</h2>
 <p class="font-body-md text-body-md text-on-surface-variant">

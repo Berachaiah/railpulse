@@ -1,6 +1,7 @@
 import json
 import os
 import secrets
+from datetime import datetime
 
 from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -404,6 +405,44 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 # Preferences
 # ---------------------------------------------------------------------------
+
+@app.post("/webhooks/notifications", name="webhook_notifications")
+async def webhook_notifications(request: Request, db: Session = Depends(get_db)):
+    provided_secret = request.headers.get("X-Webhook-Secret", "")
+    expected_secret = os.environ.get("WEBHOOK_SECRET", "")
+
+    if not expected_secret or not secrets.compare_digest(provided_secret, expected_secret):
+        return JSONResponse(status_code=401, content={"error": "invalid or missing webhook secret"})
+
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "invalid JSON body"})
+
+    required_fields = ["email", "route", "station", "message"]
+    missing = [f for f in required_fields if not payload.get(f)]
+    if missing:
+        return JSONResponse(status_code=400, content={"error": f"missing fields: {missing}"})
+
+    user = db.query(User).filter(User.email == payload["email"]).first()
+    if not user:
+        return JSONResponse(status_code=404, content={"error": f"no user found for email {payload['email']}"})
+
+    notification = Notification(
+        user_id=user.id,
+        email=payload["email"],
+        route=payload["route"],
+        station=payload["station"],
+        message=payload["message"],
+        delivery_status=payload.get("delivery_status", "delivered"),
+        created_at=datetime.utcnow().isoformat(),
+    )
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+
+    return JSONResponse(status_code=201, content={"id": notification.id, "status": "created"})
+
 
 @app.get("/api/stations")
 async def get_stations(db: Session = Depends(get_db)):
