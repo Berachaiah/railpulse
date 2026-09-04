@@ -31,6 +31,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
 
     purpose = Column(String(255), nullable=True)
+    is_admin = Column(Boolean, default=False, nullable=False)
 
     is_active = Column(Boolean, default=True, nullable=False)
 
