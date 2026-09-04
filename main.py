@@ -424,13 +424,14 @@ async def webhook_notifications(request: Request, db: Session = Depends(get_db))
     if missing:
         return JSONResponse(status_code=400, content={"error": f"missing fields: {missing}"})
 
-    user = db.query(User).filter(User.email == payload["email"]).first()
+    email_normalized = payload["email"].strip().lower()
+    user = db.query(User).filter(User.email == email_normalized).first()
     if not user:
-        return JSONResponse(status_code=404, content={"error": f"no user found for email {payload['email']}"})
+        return JSONResponse(status_code=404, content={"error": f"no user found for email {email_normalized}"})
 
     notification = Notification(
         user_id=user.id,
-        email=payload["email"],
+        email=email_normalized,
         route=payload["route"],
         station=payload["station"],
         message=payload["message"],
