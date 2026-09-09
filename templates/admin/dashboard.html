@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RailPulse Admin — Dashboard</title>
+  <link rel="icon" href="/static/images/favicon-navy-circle.svg">
+  <link rel="stylesheet" href="/static/css/admin.css">
+  <script src="/static/js/admin.js" defer></script>
+</head>
+<body>
+  <div class="admin-layout">
+    {% include "admin/_sidebar.html" %}
+
+    <div class="admin-content">
+      <div class="admin-header">
+        <h1>Dashboard</h1>
+        <p>Overview of RailPulse activity.</p>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
+          <div class="label">Total Users</div>
+          <div class="value" data-flap-target="{{ total_users }}">—</div>
+          <div class="placeholder-note">Wiring up next</div>
+        </div>
+        <div class="kpi-card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"></path><path d="M22 2l-7 20-4-9-9-4z"></path></svg></div>
+          <div class="label">Notifications (7d)</div>
+          <div class="value">—</div>
+          <div class="placeholder-note">Wiring up next</div>
+        </div>
+        <div class="kpi-card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg></div>
+          <div class="label">Admin Actions (7d)</div>
+          <div class="value">—</div>
+          <div class="placeholder-note">Awaiting audit log</div>
+        </div>
+        <div class="kpi-card">
+          <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg></div>
+          <div class="label">Error Rate (24h)</div>
+          <div class="value">—</div>
+          <div class="placeholder-note">Awaiting error log</div>
+        </div>
+      </div>
+
+      <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));">
+        <div class="panel">
+          <h3 style="margin:0 0 16px 0;font-size:15px;">Most Tracked Routes</h3>
+          <div id="topRoutesChart" style="width:100%;height:280px;"></div>
+        </div>
+        <div class="panel">
+          <h3 style="margin:0 0 16px 0;font-size:15px;">Most Tracked Stations</h3>
+          <div id="topStationsChart" style="width:100%;height:280px;"></div>
+        </div>
+      </div>
+
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+      <script>
+        function toTitleCase(str) {
+          if (str !== str.toUpperCase()) return str; // already mixed-case (e.g. "St Albans") — leave it alone
+          return str
+            .toLowerCase()
+            .split(" ")
+            .map(word => word.length ? word[0].toUpperCase() + word.slice(1) : word)
+            .join(" ");
+        }
+
+        async function renderTopChart(elementId, endpoint, categoryKey, options = {}) {
+          const el = document.getElementById(elementId);
+          const chart = echarts.init(el);
+          chart.setOption({ title: { text: "Loading...", left: "center", top: "center", textStyle: { fontSize: 12, color: "#9ca3af" } } });
+
+          try {
+            const res = await fetch(endpoint);
+            if (!res.ok) throw new Error("Request failed: " + res.status);
+            const { data } = await res.json();
+
+            if (!data || data.length === 0) {
+              chart.setOption({ title: { text: "No data yet", left: "center", top: "center", textStyle: { fontSize: 12, color: "#9ca3af" } } });
+              return;
+            }
+
+            const labels = data.map(d => options.formatLabel ? options.formatLabel(d[categoryKey]) : d[categoryKey]);
+            const longest = Math.max(...labels.map(l => l.length));
+            const leftMargin = Math.min(220, Math.max(90, longest * 6.5 + 24));
+
+            chart.setOption({
+              title: { text: "" },
+              grid: { left: leftMargin, right: 24, top: 16, bottom: 24 },
+              xAxis: { type: "value" },
+              yAxis: { type: "category", data: labels.slice().reverse(), axisLabel: { fontSize: 11 } },
+              series: [{ type: "bar", data: data.map(d => d.count).reverse(), itemStyle: { color: "#3fbf7f", borderRadius: [0, 4, 4, 0] }, barMaxWidth: 22 }],
+              tooltip: { trigger: "axis" },
+            });
+          } catch (err) {
+            chart.setOption({ title: { text: "Failed to load", left: "center", top: "center", textStyle: { fontSize: 12, color: "#ff9fae" } } });
+            console.error(endpoint, err);
+          }
+        }
+
+        renderTopChart("topRoutesChart", "/admin/api/analytics/top-routes", "route");
+        renderTopChart("topStationsChart", "/admin/api/analytics/top-stations", "station", { formatLabel: toTitleCase });
+      </script>
+    </div>
+  </div>
+</body>
+</html>

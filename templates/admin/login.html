@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RailPulse Admin — Sign In</title>
+  <link rel="icon" href="/static/images/favicon-navy-circle.svg">
+  <style>
+    :root {
+      --navy: #0f1420;
+      --navy-panel: #161c2c;
+      --navy-panel-2: #1b2338;
+      --border: #232b40;
+      --text: #e5e9f5;
+      --text-dim: #8b93ab;
+      --accent: #3fbf7f;
+      --accent-hover: #35a86f;
+      --error-bg: #3a1c22;
+      --error-border: #7a2f3a;
+      --error-text: #ff9fae;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at top, #1a2236 0%, var(--navy) 60%);
+      color: var(--text);
+    }
+    .card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--navy-panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 36px 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .logo-row img { width: 28px; height: 28px; }
+    .logo-row span {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .logo-row .badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-dim);
+      background: var(--navy-panel-2);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+    h1 {
+      font-size: 20px;
+      margin: 0 0 4px 0;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin: 0 0 24px 0;
+    }
+    .error {
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error-text);
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .field { margin-bottom: 18px; }
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      background: var(--navy-panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s ease;
+    }
+    input:focus { border-color: var(--accent); }
+    .password-wrap { position: relative; }
+    .password-wrap input { padding-right: 40px; }
+    .toggle-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+    }
+    .toggle-btn:hover { color: var(--text); }
+    .toggle-btn svg { width: 18px; height: 18px; }
+    button[type="submit"] {
+      width: 100%;
+      padding: 12px;
+      background: var(--accent);
+      color: #08130d;
+      font-weight: 700;
+      font-size: 14px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: background 0.15s ease;
+    }
+    button[type="submit"]:hover { background: var(--accent-hover); }
+    .footnote {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo-row">
+      <img src="{{ url_for('static', path='images/favicon-navy-circle.svg') }}" alt="RailPulse">
+      <span>RailPulse</span>
+      <span class="badge">ADMIN</span>
+    </div>
+
+    <h1>Sign in</h1>
+    <p class="subtitle">Restricted access — admin accounts only.</p>
+
+    {% if error %}
+      <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('admin_login_submit') }}">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autocomplete="username">
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="password-wrap">
+          <input type="password" id="password" name="password" required autocomplete="current-password">
+          <button type="button" class="toggle-btn" id="togglePassword" aria-label="Show password">
+            <svg id="eyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg id="eyeClosed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.7 18.7 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit">Sign in</button>
+    </form>
+
+    <p class="footnote">RailPulse Admin Portal</p>
+  </div>
+
+  <script>
+    const toggleBtn = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const eyeOpen = document.getElementById('eyeOpen');
+    const eyeClosed = document.getElementById('eyeClosed');
+
+    toggleBtn.addEventListener('click', () => {
+      const isHidden = passwordInput.type === 'password';
+      passwordInput.type = isHidden ? 'text' : 'password';
+      eyeOpen.style.display = isHidden ? 'none' : 'block';
+      eyeClosed.style.display = isHidden ? 'block' : 'none';
+      toggleBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    });
+  </script>
+</body>
+</html>
