@@ -21,6 +21,12 @@
         <p class="text-slate-500 mt-1">Manage your profile and how RailPulse contacts you.</p>
     </div>
 
+    {% if error %}
+    <div class="mb-6 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm px-4 py-3">
+        {{ error }}
+    </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- Profile summary -->
@@ -39,7 +45,7 @@
                     </div>
                     <div class="flex items-center justify-between text-sm py-1.5">
                         <span class="text-slate-500">Member since</span>
-                        <span class="board-font font-medium text-[#001D3C]">{{ current_user.created_at | default('—') }}</span>
+                        <span class="board-font font-medium text-[#001D3C]">{{ current_user.created_at.strftime('%d %b %Y') if current_user.created_at else '—' }}</span>
                     </div>
                 </div>
             </div>
@@ -98,7 +104,78 @@
                         <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4" style="box-shadow: 0 1px 3px rgba(0,0,0,.2);"></div>
                     </label>
                 </div>
+                <div class="flex items-center justify-between py-2 border-t border-slate-100 mt-2 pt-4">
+                    <div class="flex items-center gap-3">
+                        <div class="badge-glow w-9 h-9 rounded-lg bg-[#3AC971]/10 text-[#3AC971] flex items-center justify-center shrink-0">
+                            <svg class="icon" style="width:16px;height:16px"><use href="#icon-shield"/></svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-[#001D3C]">Push notifications</p>
+                            <p id="push-status-text" class="text-xs text-slate-500">
+                                {% if push_registered %}Enabled on this device{% else %}Get instant alerts even when RailPulse is closed{% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" id="push-toggle" {% if push_registered %}checked{% endif %} class="sr-only peer">
+                        <div class="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:bg-[#3AC971] transition-colors" style="box-shadow: inset 0 1px 2px rgba(0,0,0,.06);"></div>
+                        <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-4" style="box-shadow: 0 1px 3px rgba(0,0,0,.2);"></div>
+                    </label>
+                </div>
             </div>
+
+            <script type="module">
+                import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
+                import { getMessaging, getToken, deleteToken } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-messaging.js";
+
+                const firebaseConfig = {{ firebase_config_json | safe }};
+                const vapidKey = "{{ firebase_vapid_key }}";
+                const firebaseApp = initializeApp(firebaseConfig);
+
+                const pushToggle = document.getElementById('push-toggle');
+                const statusText = document.getElementById('push-status-text');
+
+                async function enablePush() {
+                    if (!('serviceWorker' in navigator) || !('Notification' in window)) {
+                        statusText.textContent = 'Push not supported on this browser.';
+                        pushToggle.checked = false;
+                        return;
+                    }
+                    const permission = await Notification.requestPermission();
+                    if (permission !== 'granted') {
+                        statusText.textContent = 'Notification permission denied.';
+                        pushToggle.checked = false;
+                        return;
+                    }
+                    const registration = await navigator.serviceWorker.register('/static/service-worker.js');
+                    const messaging = getMessaging(firebaseApp);
+                    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration });
+                    if (!token) {
+                        statusText.textContent = 'Could not get a push token.';
+                        pushToggle.checked = false;
+                        return;
+                    }
+                    await fetch('/api/push/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token }),
+                    });
+                    statusText.textContent = 'Enabled on this device';
+                }
+
+                async function disablePush() {
+                    await fetch('/api/push/unregister', { method: 'POST' });
+                    statusText.textContent = 'Get instant alerts even when RailPulse is closed';
+                }
+
+                pushToggle.addEventListener('change', () => {
+                    if (pushToggle.checked) {
+                        enablePush();
+                    } else {
+                        disablePush();
+                    }
+                });
+            </script>
 
             <div class="rounded-2xl border border-red-100 bg-white p-6" style="box-shadow: var(--shadow-sm);">
                 <h2 class="board-font font-semibold text-red-600 mb-1">Danger zone</h2>

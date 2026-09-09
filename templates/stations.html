@@ -7,9 +7,16 @@
     <h1 class="text-2xl font-bold text-[#001D3C] mb-1">All Stations</h1>
     <p class="text-sm text-slate-500 mb-5">Browse every station in the network. Use search to narrow it down.</p>
 
-    <form method="get" action="{{ request.url_for('stations_browse') }}" class="mb-4 flex gap-2">
+    <form method="get" action="{{ request.url_for('stations_browse') }}" class="mb-4 flex flex-col sm:flex-row gap-2">
         <input type="text" name="q" value="{{ q }}" placeholder="Search by name or CRS code…"
                class="flex-1 border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#001D3C]/20 focus:border-[#001D3C]">
+        <select name="route"
+                class="border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#001D3C]/20 focus:border-[#001D3C]">
+            <option value="">All routes</option>
+            {% for r in all_routes %}
+            <option value="{{ r }}" {% if r == route %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+        </select>
         <button type="submit" class="px-4 py-2.5 bg-[#001D3C] text-white text-sm font-medium rounded-lg">Search</button>
     </form>
 
@@ -49,10 +56,10 @@
         <span>Page {{ page }} of {{ total_pages }}</span>
         <div class="flex gap-2">
             {% if page > 1 %}
-            <a href="?page={{ page - 1 }}&q={{ q }}" class="px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50">Prev</a>
+            <a href="?page={{ page - 1 }}&q={{ q }}&route={{ route }}" class="px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50">Prev</a>
             {% endif %}
             {% if page < total_pages %}
-            <a href="?page={{ page + 1 }}&q={{ q }}" class="px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50">Next</a>
+            <a href="?page={{ page + 1 }}&q={{ q }}&route={{ route }}" class="px-3 py-1.5 border border-slate-300 rounded-lg hover:bg-slate-50">Next</a>
             {% endif %}
         </div>
     </div>

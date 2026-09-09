@@ -22,7 +22,13 @@ from auth import (
 from collections import defaultdict
 from sqlalchemy import text
 from database import Base, engine, get_db
-from models import User, UserPreference, Notification
+from models import User, UserPreference, Notification, PushSubscription
+from firebase_admin import messaging
+from admin_seed import ensure_admin_seed
+from admin_auth import get_current_admin, verify_admin_credentials, create_admin_session_token, ADMIN_SESSION_COOKIE
+from passlib.hash import bcrypt
+
+FIREBASE_VAPID_KEY = os.environ.get("FIREBASE_VAPID_KEY", "")
 
 FIREBASE_CONFIG_JSON = json.dumps({
     "apiKey": os.environ["FIREBASE_API_KEY"],
@@ -39,6 +45,10 @@ app = FastAPI(title="RailPulse")
 
 # Create tables on startup (fine for sqlite/dev; use Alembic migrations in production)
 Base.metadata.create_all(bind=engine)
+
+# Seed/promote the admin account from ADMIN_EMAIL/ADMIN_PASSWORD, if set
+with Session(engine) as _admin_seed_db:
+    ensure_admin_seed(_admin_seed_db)
 
 if os.environ.get("SEED_DEV_DATA") == "1":
     from dev_seed import run_dev_seed
@@ -406,6 +416,64 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 # Preferences
 # ---------------------------------------------------------------------------
 
+@app.post("/api/push/register", name="push_register")
+async def push_register(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return JSONResponse(status_code=401, content={"error": "not authenticated"})
+
+    try:
+        payload = await request.json()
+    except Exception:
+        return JSONResponse(status_code=400, content={"error": "invalid JSON body"})
+
+    token = (payload.get("token") or "").strip()
+    if not token:
+        return JSONResponse(status_code=400, content={"error": "missing token"})
+
+    existing = db.query(PushSubscription).filter(PushSubscription.fcm_token == token).first()
+    if existing:
+        existing.user_id = current_user.id
+    else:
+        db.add(PushSubscription(user_id=current_user.id, fcm_token=token))
+    db.commit()
+
+    return JSONResponse(status_code=200, content={"status": "registered"})
+
+
+@app.post("/api/push/unregister", name="push_unregister")
+async def push_unregister(request: Request, db: Session = Depends(get_db)):
+    current_user = get_current_user(request, db)
+    if not current_user:
+        return JSONResponse(status_code=401, content={"error": "not authenticated"})
+
+    db.query(PushSubscription).filter(PushSubscription.user_id == current_user.id).delete()
+    db.commit()
+
+    return JSONResponse(status_code=200, content={"status": "unregistered"})
+
+
+def send_push_to_user(db: Session, user: User, title: str, body: str, url: str = "/notifications"):
+    """Best-effort FCM push to every device the user has registered.
+    Never raises -- a push failure should not block notification logging."""
+    subs = db.query(PushSubscription).filter(PushSubscription.user_id == user.id).all()
+    print(f"[push] found {len(subs)} subscription(s) for user {user.id} ({user.email})")
+    for sub in subs:
+        try:
+            message = messaging.Message(
+                data={"title": title, "body": body, "url": url},
+                token=sub.fcm_token,
+            )
+            result = messaging.send(message)
+            print(f"[push] sent OK, message id: {result}")
+        except messaging.UnregisteredError:
+            print(f"[push] token unregistered, deleting: {sub.fcm_token[:20]}...")
+            db.delete(sub)
+            db.commit()
+        except Exception as exc:
+            print(f"[push] send failed for user {user.id}: {type(exc).__name__}: {exc}")
+
+
 @app.post("/webhooks/notifications", name="webhook_notifications")
 async def webhook_notifications(request: Request, db: Session = Depends(get_db)):
     provided_secret = request.headers.get("X-Webhook-Secret", "")
@@ -442,6 +510,13 @@ async def webhook_notifications(request: Request, db: Session = Depends(get_db))
     db.commit()
     db.refresh(notification)
 
+    send_push_to_user(
+        db,
+        user,
+        title=f"RailPulse: {payload['route']}",
+        body=payload["message"],
+    )
+
     return JSONResponse(status_code=201, content={"id": notification.id, "status": "created"})
 
 
@@ -466,21 +541,24 @@ async def get_stations(db: Session = Depends(get_db)):
     return grouped
 
 @app.get("/api/stations/search")
-async def search_stations(q: str = "", db: Session = Depends(get_db)):
+async def search_stations(q: str = "", route: str = "", db: Session = Depends(get_db)):
     q = q.strip()
+    route = route.strip()
     if len(q) < 2:
         return []
-    result = db.execute(
-        text("""
-            SELECT stanox_no, full_name, crs_code, route_description
-            FROM station_codes
-            WHERE crs_code IS NOT NULL
-              AND (full_name LIKE :pattern OR crs_code LIKE :pattern)
-            ORDER BY full_name
-            LIMIT 20
-        """),
-        {"pattern": f"%{q}%"}
-    )
+    query = """
+        SELECT stanox_no, full_name, crs_code, route_description
+        FROM station_codes
+        WHERE crs_code IS NOT NULL
+          AND (LOWER(full_name) LIKE LOWER(:pattern) OR LOWER(crs_code) LIKE LOWER(:pattern))
+    """
+    params = {"pattern": f"%{q}%"}
+    if route:
+        query += " AND route_description = :route"
+        params["route"] = route
+    query += " ORDER BY full_name LIMIT 20"
+
+    result = db.execute(text(query), params)
     return [
         {
             "stanox_no": row.stanox_no,
@@ -493,7 +571,7 @@ async def search_stations(q: str = "", db: Session = Depends(get_db)):
 
 
 @app.get("/stations", name="stations_browse")
-async def stations_browse(request: Request, page: int = 1, q: str = "", db: Session = Depends(get_db)):
+async def stations_browse(request: Request, page: int = 1, q: str = "", route: str = "", db: Session = Depends(get_db)):
     current_user = get_current_user(request, db)
     if not current_user:
         return RedirectResponse(url=request.url_for("sign_in_page"), status_code=303)
@@ -505,8 +583,11 @@ async def stations_browse(request: Request, page: int = 1, q: str = "", db: Sess
     base_query = "FROM station_codes WHERE crs_code IS NOT NULL"
     params = {}
     if q.strip():
-        base_query += " AND (full_name LIKE :pattern OR crs_code LIKE :pattern)"
+        base_query += " AND (LOWER(full_name) LIKE LOWER(:pattern) OR LOWER(crs_code) LIKE LOWER(:pattern))"
         params["pattern"] = f"%{q.strip()}%"
+    if route.strip():
+        base_query += " AND route_description = :route"
+        params["route"] = route.strip()
 
     total = db.execute(text(f"SELECT COUNT(*) {base_query}"), params).scalar()
 
@@ -524,6 +605,10 @@ async def stations_browse(request: Request, page: int = 1, q: str = "", db: Sess
 
     total_pages = max((total + per_page - 1) // per_page, 1)
 
+    all_routes = db.execute(
+        text("SELECT DISTINCT route_description FROM station_codes WHERE route_description IS NOT NULL ORDER BY route_description")
+    ).scalars().all()
+
     return templates.TemplateResponse(
         request,
         "stations.html",
@@ -533,6 +618,8 @@ async def stations_browse(request: Request, page: int = 1, q: str = "", db: Sess
             "page": page,
             "total_pages": total_pages,
             "q": q,
+            "route": route,
+            "all_routes": all_routes,
         },
     )
 
@@ -542,6 +629,10 @@ async def preferences_page(request: Request, db: Session = Depends(get_db)):
     if not current_user:
         return RedirectResponse(url=request.url_for("sign_in_page"), status_code=303)
 
+    all_routes = db.execute(
+        text("SELECT DISTINCT route_description FROM station_codes WHERE route_description IS NOT NULL ORDER BY route_description")
+    ).scalars().all()
+
     return templates.TemplateResponse(
         request,
         "preferences.html",
@@ -550,6 +641,7 @@ async def preferences_page(request: Request, db: Session = Depends(get_db)):
              "tracked_routes": db.query(UserPreference).filter(
                 UserPreference.email == current_user.email
             ).all(),
+            "all_routes": all_routes,
         },
     )
 
@@ -626,6 +718,10 @@ async def account_page(request: Request, db: Session = Depends(get_db)):
     if not current_user:
         return RedirectResponse(url=request.url_for("sign_in_page"), status_code=303)
 
+    push_registered = db.query(PushSubscription).filter(
+        PushSubscription.user_id == current_user.id
+    ).first() is not None
+
     return templates.TemplateResponse(
         request,
         "account.html",
@@ -634,6 +730,9 @@ async def account_page(request: Request, db: Session = Depends(get_db)):
              "tracked_routes_count": db.query(UserPreference).filter(
                 UserPreference.email == current_user.email
             ).count(),
+            "firebase_config_json": FIREBASE_CONFIG_JSON,
+            "firebase_vapid_key": FIREBASE_VAPID_KEY,
+            "push_registered": push_registered,
         },
     )
 
@@ -652,10 +751,123 @@ async def account_submit(
 
     current_user.first_name = first_name.strip()
     current_user.last_name = last_name.strip()
-    current_user.email = email.strip().lower()
+    new_email = email.strip().lower()
+
+    if new_email != current_user.email:
+        existing = db.query(User).filter(User.email == new_email).first()
+        if existing:
+            db.rollback()
+            return templates.TemplateResponse(
+                request,
+                "account.html",
+                {
+                    "current_user": current_user,
+                    "tracked_routes_count": db.query(UserPreference).filter(
+                        UserPreference.email == current_user.email
+                    ).count(),
+                    "error": "That email is already in use by another account.",
+                },
+                status_code=400,
+            )
+        current_user.email = new_email
+
     db.commit()
 
     return RedirectResponse(url=request.url_for("account"), status_code=303)
 
+
+# ---------------------------------------------------------------------------
+# Admin
+# ---------------------------------------------------------------------------
+
+@app.get("/admin/login", name="admin_login_page")
+async def admin_login_page(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "admin/login.html",
+        {"error": None},
+    )
+
+@app.post("/admin/login", name="admin_login_submit")
+async def admin_login_submit(
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    email_normalized = email.strip().lower()
+    user = verify_admin_credentials(db, email_normalized, password)
+    if not user:
+        return templates.TemplateResponse(
+            request,
+            "admin/login.html",
+            {"error": "Incorrect email or password, or this account has no admin access."},
+            status_code=400,
+        )
+
+    response = RedirectResponse(url=request.url_for("admin_dashboard"), status_code=303)
+    token = create_admin_session_token(user)
+    response.set_cookie(
+        ADMIN_SESSION_COOKIE,
+        token,
+        max_age=SESSION_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+    )
+    return response
+
+@app.get("/admin/dashboard", name="admin_dashboard")
+async def admin_dashboard(request: Request, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    return templates.TemplateResponse(
+        request,
+        "admin/dashboard.html",
+        {
+            "current_admin": current_admin,
+            "active_page": "dashboard",
+            "total_users": total_users(db),
+        },
+    )
+
+@app.get("/admin/logout", name="admin_logout")
+async def admin_logout(request: Request):
+    response = RedirectResponse(url=request.url_for("admin_login_page"), status_code=303)
+    response.delete_cookie(ADMIN_SESSION_COOKIE)
+    return response
+
+@app.get("/admin/users", name="admin_users")
+async def admin_users(request: Request, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    users = db.query(User).order_by(User.email).all()
+    return templates.TemplateResponse("admin/users.html", {"request": request, "current_admin": current_admin, "active_page": "users", "users": users})
+
+@app.post("/admin/users/{user_id}/grant-admin", name="admin_grant")
+async def admin_grant(user_id: str, password: str = Form(...), current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(404)
+    target.is_admin = True
+    target.admin_password_hash = bcrypt.hash(password)
+    db.commit()
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+@app.post("/admin/users/{user_id}/revoke-admin", name="admin_revoke")
+async def admin_revoke(user_id: str, current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    if user_id == current_admin.id:
+        raise HTTPException(400, "Can't revoke your own admin access.")
+    target = db.query(User).filter(User.id == user_id).first()
+    target.is_admin = False
+    target.admin_password_hash = None
+    db.commit()
+    return RedirectResponse(url="/admin/users", status_code=303)
+
+from admin_analytics import top_routes, top_stations, total_users
+
+@app.get("/admin/api/analytics/top-routes")
+async def api_top_routes(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    return {"data": top_routes(db)}
+
+@app.get("/admin/api/analytics/top-stations")
+async def api_top_stations(current_admin: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    return {"data": top_stations(db)}
 
 # Local dev: uvicorn main:app --reload

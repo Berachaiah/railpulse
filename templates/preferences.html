@@ -105,6 +105,17 @@
             </div>
             <form method="post" action="/preferences" class="space-y-4">
                 <input type="hidden" id="route-hidden" name="route">
+                <div class="mb-4">
+                    <label for="route-select" class="block text-sm font-medium text-slate-700 mb-1.5">Route (optional)</label>
+                    <select id="route-select" autocomplete="off"
+                            class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-[#001D3C]/20 focus:border-[#001D3C]">
+                        <option value="">All routes</option>
+                        {% for r in all_routes %}
+                        <option value="{{ r }}">{{ r }}</option>
+                        {% endfor %}
+                    </select>
+                    <p class="text-xs text-slate-400 mt-1">Narrows station suggestions to a route.</p>
+                </div>
                 <div class="mb-4 relative">
                     <label for="station-search" class="block text-sm font-medium text-slate-700 mb-1.5">Station</label>
                     <input type="text" id="station-search" autocomplete="off" placeholder="Start typing a station name…" required
@@ -118,6 +129,7 @@
                 <script>
                   (function() {
                     const searchInput = document.getElementById('station-search');
+                    const routeSelect = document.getElementById('route-select');
                     const hiddenStation = document.getElementById('station-hidden');
                     const hiddenRoute = document.getElementById('route-hidden');
                     const suggestionsBox = document.getElementById('station-suggestions');
@@ -145,6 +157,12 @@
                       window.history.replaceState({}, '', window.location.pathname);
                     }
 
+                    routeSelect.addEventListener('change', () => {
+                      if (searchInput.value.trim().length >= 2) {
+                        searchInput.dispatchEvent(new Event('input'));
+                      }
+                    });
+
                     searchInput.addEventListener('input', () => {
                       selectedValid = false;
                       hiddenStation.value = '';
@@ -159,7 +177,8 @@
                       }
                       debounceTimer = setTimeout(async () => {
                         try {
-                          const res = await fetch(`/api/stations/search?q=${encodeURIComponent(q)}`);
+                          const routeParam = routeSelect.value ? `&route=${encodeURIComponent(routeSelect.value)}` : '';
+                          const res = await fetch(`/api/stations/search?q=${encodeURIComponent(q)}${routeParam}`);
                           const results = await res.json();
                           suggestionsBox.innerHTML = '';
                           if (results.length === 0) {
@@ -168,7 +187,7 @@
                           }
                           for (const station of results) {
                             const item = document.createElement('div');
-                            item.className = 'px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer';
+                            item.className = 'px-3 py-2 text-sm text-slate-900 hover:bg-slate-50 cursor-pointer';
                             item.textContent = `${station.full_name} (${station.crs_code}) — ${station.route_description}`;
                             item.addEventListener('click', () => {
                               searchInput.value = station.full_name;

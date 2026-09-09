@@ -7,12 +7,17 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let data = {};
+  let payload = {};
   try {
-    data = event.data.json();
+    payload = event.data.json();
   } catch (e) {
-    data = { title: 'RailPulse', body: event.data ? event.data.text() : '' };
+    payload = { body: event.data ? event.data.text() : '' };
   }
+
+  // FCM data-only messages can arrive either flat ({title, body, url})
+  // or wrapped one level deeper ({data: {title, body, url}, ...}) --
+  // handle both shapes.
+  const data = (payload.data && typeof payload.data === 'object') ? payload.data : payload;
 
   event.waitUntil(
     self.registration.showNotification(data.title || 'RailPulse', {

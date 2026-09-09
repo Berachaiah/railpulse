@@ -32,6 +32,7 @@ class User(Base):
 
     purpose = Column(String(255), nullable=True)
     is_admin = Column(Boolean, default=False, nullable=False)
+    admin_password_hash = Column(String(255), nullable=True)
 
     is_active = Column(Boolean, default=True, nullable=False)
 
@@ -58,6 +59,37 @@ class User(Base):
         "Notification",
         back_populates="user",
         cascade="all, delete-orphan",
+    )
+
+    push_subscriptions = relationship(
+        "PushSubscription",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+
+class PushSubscription(Base):
+    __tablename__ = "push_subscriptions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    user_id = Column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    fcm_token = Column(String(500), unique=True, nullable=False)
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    user = relationship(
+        "User",
+        back_populates="push_subscriptions",
     )
 
 
